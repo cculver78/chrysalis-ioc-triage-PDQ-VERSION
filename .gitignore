@@ -1,0 +1,28 @@
+# Scan reports (contain timestamps; regenerate with script)
+chrysalis-scan-*.json
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor / IDE
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Temp
+*.tmp
+*.temp
+*.log
+*.bak
+*~
