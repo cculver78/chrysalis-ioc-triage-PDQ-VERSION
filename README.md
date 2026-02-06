@@ -1,4 +1,4 @@
-# Chrysalis IoC Triage (PDQ Connect Edition)
+# Chrysalis IoC Triage (PDQ CONNECT/DEPLOY Edition)
 
 A self-contained, read-only host-based checker for **Indicators of Compromise (IoC)** associated with the **Chrysalis** backdoor and **Lotus Blossom (Billbug)** campaign. Designed for deployment via **PDQ Connect** across Windows endpoints.
 
