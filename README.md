@@ -1,12 +1,16 @@
-# Chrysalis IoC Triage
+# Chrysalis IoC Triage (PDQ Connect Edition)
 
-A read-only host-based checker for **Indicators of Compromise (IoC)** associated with the **Chrysalis** backdoor and **Lotus Blossom (Billbug)** campaign. Runs on Windows via PowerShell and does not modify the system.
+A self-contained, read-only host-based checker for **Indicators of Compromise (IoC)** associated with the **Chrysalis** backdoor and **Lotus Blossom (Billbug)** campaign. Designed for deployment via **PDQ Connect** across Windows endpoints.
+
+## Credit
+
+Forked from [CreamyG31337/chrysalis-ioc-triage](https://github.com/CreamyG31337/chrysalis-ioc-triage). Original script and IoC data by **CreamyG31337**. This fork restructures the script for mass deployment via PDQ Connect.
 
 ## Source
 
 All IoCs are derived from the following publication:
 
-**Rapid7 – *The Chrysalis Backdoor: A Deep Dive into Lotus Blossom's toolkit***  
+**Rapid7 -- *The Chrysalis Backdoor: A Deep Dive into Lotus Blossom's toolkit***
 <https://www.rapid7.com/blog/post/tr-chrysalis-backdoor-dive-into-lotus-blossoms-toolkit/>
 
 | | |
@@ -16,31 +20,24 @@ All IoCs are derived from the following publication:
 
 ---
 
-## Table of contents
-
-- [Quick start](#quick-start)
-- [What is checked](#what-is-checked)
-- [Options](#options)
-- [Project layout](#project-layout)
-- [Documentation](#documentation)
-- [Interpretation](#interpretation)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-
 ## Quick start
 
 **Requirements:** Windows, PowerShell 5.1 or later. Run as Administrator for full registry and service checks.
 
-```powershell
-git clone <repository-url>
-cd chrysalis-ioc-triage
-.\scripts\Check-ChrysalisIoC.ps1
-```
+The script is fully self-contained with all IoCs embedded. No external `iocs.json` file is needed.
 
-- **Exit code 0** — No IoCs detected in checked locations.
-- **Exit code 1** — One or more findings; review console output and the generated `chrysalis-scan-<timestamp>.json` report.
+### PDQ Connect deployment
+
+1. Add `Check-ChrysalisIoC.ps1` as a PowerShell script step in a PDQ Connect package.
+2. Deploy to target endpoints.
+3. Exit code 0 = clean. Exit code 1 = findings detected.
+4. JSON reports are saved to `C:\ProgramData\ChrysalisScan\` on each endpoint.
+
+### Manual execution
+
+```powershell
+.\Check-ChrysalisIoC.ps1
+```
 
 ---
 
@@ -48,30 +45,24 @@ cd chrysalis-ioc-triage
 
 | Check | Description |
 |-------|-------------|
-| **Paths** | `%AppData%\Bluetooth` (and if hidden); files under that folder and `%ProgramData%\USOShared` |
-| **File hashes** | SHA-256 of files in those folders (and optional `-ScanPaths`); compared to 16 known malicious hashes |
+| **Paths** | `%AppData%\Bluetooth` (including hidden attribute check); files under that folder and `%ProgramData%\USOShared` |
+| **File hashes** | SHA-256 of files in known directories compared against 16 known malicious hashes |
 | **Mutex** | `Global\Jdhfv_1.0.1` (Chrysalis single-instance; presence suggests possible live implant) |
 | **Registry** | HKCU/HKLM Run keys for Chrysalis-like values (e.g. `BluetoothService.exe` in `AppData\Bluetooth` with `-i`/`-k`) |
-| **Services** | Services named `BluetoothService` or path under `AppData\...\Bluetooth\BluetoothService.exe` |
+| **Services** | Services named `BluetoothService` or with path under `AppData\...\Bluetooth\BluetoothService.exe` |
 
-The script is read-only and does not modify files or registry.
+The script is read-only and does not modify files, registry, or services.
 
 ---
 
-## Options
+## Changes from upstream
 
-| Parameter | Description |
-|-----------|-------------|
-| `-ScanPaths 'C:\Users','C:\ProgramData'` | Hash and compare files under these paths (may be slow) |
-| `-NoRegistry` | Skip Run key checks |
-| `-NoMutex` | Skip mutex check |
-| `-IocFile <path>` | Path to IoC JSON file (default: `iocs.json` in repository root) |
-
-Example — broader hash scan:
-
-```powershell
-.\scripts\Check-ChrysalisIoC.ps1 -ScanPaths 'C:\Users','C:\ProgramData'
-```
+| Upstream (CreamyG31337) | This fork |
+|--------------------------|-----------|
+| IoCs loaded from external `iocs.json` | IoCs embedded directly in the script; `iocs.json` removed from repo |
+| Parameters: `-ScanPaths`, `-NoRegistry`, `-NoMutex`, `-IocFile` | No parameters; runs all default checks |
+| Top-level `[CmdletBinding()]` / `param()` block | Wrapped in `function Main` for PDQ Connect compatibility |
+| Report saved next to `iocs.json` | Report saved to `C:\ProgramData\ChrysalisScan\` |
 
 ---
 
@@ -79,37 +70,29 @@ Example — broader hash scan:
 
 ```
 chrysalis-ioc-triage/
-├── README.md
-├── AGENTS.md
-├── CONTRIBUTING.md
-├── LICENSE
-├── CHANGELOG.md
-├── iocs.json
-├── docs/
-│   ├── README.md
-│   ├── chrysalis-iocs.md
-│   └── script-reference.md
-└── scripts/
-    └── Check-ChrysalisIoC.ps1
++-- README.md
++-- AGENTS.md
++-- CONTRIBUTING.md
++-- LICENSE
++-- CHANGELOG.md
++-- docs/
+|   +-- README.md
+|   +-- chrysalis-iocs.md
+|   +-- script-reference.md
++-- scripts/
+    +-- Check-ChrysalisIoC.ps1
 ```
 
 ---
 
-## Documentation
+## Report output
 
-| Document | Description |
-|----------|-------------|
-| [docs/README.md](docs/README.md) | Documentation index |
-| [docs/chrysalis-iocs.md](docs/chrysalis-iocs.md) | IoC reference (hashes, paths, mutex, registry, network, MITRE ATT&CK) |
-| [docs/script-reference.md](docs/script-reference.md) | Script parameters, exit codes, report format |
-| [AGENTS.md](AGENTS.md) | Project context for AI/agent use |
-
----
+Reports are saved as JSON to `C:\ProgramData\ChrysalisScan\chrysalis-scan-<timestamp>.json` on each endpoint. Each finding includes a category, detail, severity, and timestamp.
 
 ## Interpretation
 
-- **Critical** — Known malicious file hash match or Chrysalis mutex present: treat as compromise until proven otherwise.
-- **High** — Suspicious path, Run key, or service: investigate (may overlap with legitimate software).
+- **Critical** -- Known malicious file hash match or Chrysalis mutex present. Treat as compromise until proven otherwise.
+- **High** -- Suspicious path, Run key, or service. Investigate further (may overlap with legitimate software).
 
 `C:\ProgramData\USOShared` is a legitimate Windows path; the script does not flag its existence, only known malicious hashes within it. Registry and service checks use Chrysalis-specific patterns to limit false positives.
 
